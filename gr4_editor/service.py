@@ -399,10 +399,9 @@ class Editor(XmpEditorMixin):
                    for row in project.get("filters", [])):
                 raise ValueError("有滤镜校色失败，请重新转换后再生成固件")
             next_version = self._allocate_version(image.version, version)
-            # The public crop/shutdown compiler remains authoritative for its
-            # registered demo inputs.  The research native-filter compiler is
-            # selected only for a verified registry image that the public
-            # compiler cannot canonicalise (for example the .70 baseline).
+            # Prefer the crop/shutdown compiler for its registered inputs,
+            # unless filter edits select the native registry compiler.  A
+            # verified registry image such as .70 also uses that compiler.
             try:
                 public_backend = bool(__import__("gr4_editor.demo_build", fromlist=["supports_image"]).supports_image(image.rtos))
             except (ImportError, AttributeError, ValueError, TypeError, struct.error):
@@ -422,6 +421,10 @@ class Editor(XmpEditorMixin):
             filter_backend = (bool(_filter_backend(image)) and
                               policy_supported and
                               (not public_backend or filter_requested))
+            # The selected compiler also owns readback and manifest scope.
+            # Official input is accepted by both backends, but a filter build
+            # has no frozen crop plan or demo recovery footer to validate.
+            public_backend = public_backend and not filter_backend
             feature_backend = public_backend or filter_backend
             if not feature_backend:
                 baseline_shutdown = validate_draft(None, read_shutdown(image))
@@ -486,6 +489,8 @@ class Editor(XmpEditorMixin):
                 raise ValueError("生成候选无法恢复到已适配的官方基线")
             packaged_filters = []
             if filter_backend:
+                if _filter_backend(packaged) is None:
+                    raise ValueError("生成固件的滤镜编译基线无法恢复")
                 from .filter_reader import read_filters
                 packaged_filters = read_filters(packaged)
                 planned_filters = patch_report.get("recipe_filters", project.get("filters", []))

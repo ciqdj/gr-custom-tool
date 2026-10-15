@@ -1108,7 +1108,7 @@ def apply_filter_registry(rtos, icon_bytes, filters, prior_filters, *, baseline_
     patch.official_base = base_sha == OFFICIAL7_SHA
     if patch.official_base:
         from .official_scaffold import initialize_scaffold
-        scaffold_report = initialize_scaffold(patch)
+        scaffold_report = initialize_scaffold(patch, filter_registry=True)
     else:
         scaffold_report = None
     fallback_report = _restore_scalar_fallbacks(patch)

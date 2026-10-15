@@ -195,6 +195,13 @@ def prepare_update_policy(rtos, allow_older=True):
         return transform_or_preserve_unknown(source)
 
     if metadata.get("demo_read_only"):
+        from . import slots
+        if (slots.supports_image(source) and
+                inspect_update_policy(source).get("status") == "verified"):
+            # Filter registries own their canonical recovery records.  Any
+            # new gate edits must enter that restore list as well as the body
+            # checksum, so the generated BIN remains editable on re-import.
+            return slots.prepare_update_policy(source, allow_older=allow_older)
         try:
             footer_size = 16 + struct.unpack_from("<I", source, len(source) - 8)[0]
             if footer_size > len(source):
